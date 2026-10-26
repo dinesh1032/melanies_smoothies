@@ -88,7 +88,8 @@ if st.button("Get Watermelon Information"):
         response.raise_for_status()
 
         try:
-            st.json(response.json())
+            #st.json(response.json())
+            sf_df = st.dataframe(data=response.json(),use_container_width=True)
         except ValueError:
             st.text(response.text)
 
