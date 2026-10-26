@@ -13,7 +13,10 @@ st.set_page_config(
 
 # App title
 st.title("🥤 Customize Your Smoothie! 🥤")
-st.write("Choose the fruits you want in your custom Smoothie!")
+
+st.write(
+    "Choose the fruits you want in your custom Smoothie!"
+)
 
 # Connect to Snowflake
 cnx = st.connection("snowflake")
@@ -21,23 +24,27 @@ session = cnx.session()
 
 # Customer name
 name_on_order = st.text_input("Name on Smoothie:")
-st.write("The name on your Smoothie will be:", name_on_order)
 
-# Fetch fruit options and API search values from Snowflake
+st.write(
+    "The name on your Smoothie will be:",
+    name_on_order
+)
+
+# Fetch fruit options and SEARCH_ON values from Snowflake
 try:
-    fruit_rows = (
+    my_dataframe = (
         session.table("smoothies.public.fruit_options")
-        .select(col("FRUIT_NAME"), col("SEARCH_ON"))
-        .collect()
+        .select(
+            col("FRUIT_NAME"),
+            col("SEARCH_ON")
+        )
     )
 
-    fruit_options = [row["FRUIT_NAME"] for row in fruit_rows]
+    # Convert Snowpark DataFrame to Pandas DataFrame
+    pd_df = my_dataframe.to_pandas()
 
-    # Map each fruit name to its correct API search value
-    fruit_search_values = {
-        row["FRUIT_NAME"]: row["SEARCH_ON"]
-        for row in fruit_rows
-    }
+    # Get fruit names for multiselect
+    fruit_options = pd_df["FRUIT_NAME"].tolist()
 
 except Exception as e:
     st.error(f"Unable to load fruit options: {e}")
@@ -46,16 +53,20 @@ except Exception as e:
 # Select ingredients
 ingredients_list = st.multiselect(
     "Choose up to 5 ingredients:",
-    options=fruit_options,
+    fruit_options,
     max_selections=5
 )
 
 # Show selected ingredients
 if ingredients_list:
-    st.write("**Selected ingredients:**", ", ".join(ingredients_list))
+    st.write(
+        "**Selected ingredients:**",
+        ", ".join(ingredients_list)
+    )
 
 # Submit order
 if st.button("Submit Order", type="primary"):
+
     if not name_on_order.strip():
         st.warning("Please enter a name for your smoothie.")
 
@@ -63,9 +74,11 @@ if st.button("Submit Order", type="primary"):
         st.warning("Please choose at least one fruit.")
 
     else:
+        # Build ingredients string
         ingredients_string = " ".join(ingredients_list)
 
         try:
+            # Insert order into Snowflake
             session.sql(
                 """
                 INSERT INTO smoothies.public.orders
@@ -78,53 +91,76 @@ if st.button("Submit Order", type="primary"):
                 ]
             ).collect()
 
-            st.success("Your smoothie is ordered! ✅")
-            st.write(f"**Name:** {name_on_order.strip()}")
-            st.write(f"**Ingredients:** {ingredients_string}")
+            st.success(
+                "Your smoothie is ordered! ✅"
+            )
+
+            st.write(
+                f"**Name:** {name_on_order.strip()}"
+            )
+
+            st.write(
+                f"**Ingredients:** {ingredients_string}"
+            )
 
         except Exception as e:
-            st.error(f"Unable to submit your order: {e}")
+            st.error(
+                f"Unable to submit your order: {e}"
+            )
 
 # Fruit nutrition information
 st.divider()
 
 for fruit_chosen in ingredients_list:
-    st.subheader(f"{fruit_chosen} Nutrition Information")
 
-    # Get the correct search value from Snowflake
-    search_value = fruit_search_values.get(fruit_chosen)
+    # Find SEARCH_ON value for the selected fruit
+    search_on_rows = pd_df.loc[
+        pd_df["FRUIT_NAME"] == fruit_chosen,
+        "SEARCH_ON"
+    ]
 
-    if not search_value:
-        st.warning(f"No SEARCH_ON value found for {fruit_chosen}.")
+    if search_on_rows.empty or pd.isna(search_on_rows.iloc[0]):
+        st.warning(
+            f"No SEARCH_ON value found for {fruit_chosen}."
+        )
         continue
 
+    search_on = str(search_on_rows.iloc[0]).strip()
+
+    # Display fruit heading
+    st.subheader(
+        fruit_chosen + " Nutrition Information"
+    )
+
+    # Display search value as shown in the screenshot
     st.info(
-        f"The search value for {fruit_chosen} is {search_value}."
+        f"The search value for {fruit_chosen} is {search_on}."
     )
 
     try:
-        response = requests.get(
-            "https://my.smoothiefroot.com/api/fruit/"
-            + str(search_value).strip(),
+        # Call fruit nutrition API using SEARCH_ON
+        smoothiefroot_response = requests.get(
+            f"https://my.smoothiefroot.com/api/fruit/{search_on}",
             timeout=10
         )
 
-        response.raise_for_status()
-        response_data = response.json()
+        smoothiefroot_response.raise_for_status()
 
-        # Display API response in a readable table
+        response_data = smoothiefroot_response.json()
+
+        # Display API response in a table
         if isinstance(response_data, dict):
-            sf_df = pd.DataFrame([response_data])
-            st.dataframe(
-                data=sf_df,
+
+            sf_df = st.dataframe(
+                data=pd.DataFrame([response_data]),
                 use_container_width=True,
                 hide_index=True
             )
 
         elif isinstance(response_data, list):
-            sf_df = pd.DataFrame(response_data)
-            st.dataframe(
-                data=sf_df,
+
+            sf_df = st.dataframe(
+                data=pd.DataFrame(response_data),
                 use_container_width=True,
                 hide_index=True
             )
@@ -133,7 +169,11 @@ for fruit_chosen in ingredients_list:
             st.write(response_data)
 
     except requests.RequestException as e:
-        st.error(f"Unable to retrieve fruit information: {e}")
+        st.error(
+            f"Unable to retrieve fruit information: {e}"
+        )
 
     except ValueError:
-        st.error(f"Invalid JSON response for {fruit_chosen}.")
+        st.error(
+            f"Invalid JSON response for {fruit_chosen}."
+        )
