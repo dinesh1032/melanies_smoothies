@@ -45,6 +45,7 @@ ingredients_list = st.multiselect(
 # Show selected ingredients
 if ingredients_list:
     st.write("**Selected ingredients:**", ", ".join(ingredients_list))
+    #ingredients_string +=
 
 # Submit order
 if st.button("Submit Order", type="primary"):
