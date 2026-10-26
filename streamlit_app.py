@@ -78,12 +78,14 @@ if st.button("Submit Order", type="primary"):
 
 # Fruit API example
 st.divider()
-st.subheader("🍉 Watermelon Information")
 
-if st.button("Get Watermelon Information"):
+
+if fruit_chosen in ingredients_list:
+    st.subheader(fruit_chosen + " Nutrition Information")
+#st.button("Get Watermelon Information"):
     try:
         response = requests.get(
-            "https://my.smoothiefroot.com/api/fruit/watermelon",
+            "https://my.smoothiefroot.com/api/fruit/"+fruit_chosen,
             timeout=10
         )
         response.raise_for_status()
@@ -95,7 +97,7 @@ if st.button("Get Watermelon Information"):
             st.text(response.text)
 
     except requests.RequestException as e:
-        st.error(f"Unable to retrieve watermelon information: {e}")
+        st.error(f"Unable to retrieve fruit information: {e}")
 
 
 
