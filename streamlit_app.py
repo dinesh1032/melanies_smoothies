@@ -25,7 +25,7 @@ name_on_order = st.text_input("Name on Smoothie:")
 try:
     fruit_rows = (
         session.table("smoothies.public.fruit_options")
-        .select(col("FRUIT_NAME"))
+        .select(col("FRUIT_NAME"),col("SEARCH_ON")
         .collect()
     )
 
