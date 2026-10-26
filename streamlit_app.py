@@ -80,7 +80,7 @@ if st.button("Submit Order", type="primary"):
 st.divider()
 
 
-if fruit_chosen in ingredients_list:
+for fruit_chosen in ingredients_list:
     st.subheader(fruit_chosen + " Nutrition Information")
 #st.button("Get Watermelon Information"):
     try:
