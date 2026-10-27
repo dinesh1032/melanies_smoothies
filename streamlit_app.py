@@ -75,7 +75,7 @@ if st.button("Submit Order", type="primary"):
 
     else:
         # Build ingredients string
-        ingredients_string = " ".join(ingredients_list)
+        ingredients_string = " ".join(ingredients_list) + " "
 
         try:
             # Insert order into Snowflake
